@@ -22,7 +22,7 @@ namespace BondBound
             Reg(new EnemyDefinition
             {
                 Id = "slimeling", Name = "Slimeling", Emoji = "🟢",
-                BaseHp = 28, Acts = new() { 1 }, IsElite = false, IsBoss = false,
+                BaseHp = 50, Acts = new() { 1 }, IsElite = false, IsBoss = false,
                 Pattern = new()
                 {
                     new EnemyAction { Type = EnemyIntentType.Attack, Value = 7 },
@@ -34,7 +34,7 @@ namespace BondBound
             Reg(new EnemyDefinition
             {
                 Id = "stone_brute", Name = "Stone Brute", Emoji = "🪨",
-                BaseHp = 52, Acts = new() { 1 }, IsElite = false, IsBoss = false,
+                BaseHp = 82, Acts = new() { 1 }, IsElite = false, IsBoss = false,
                 Pattern = new()
                 {
                     new EnemyAction { Type = EnemyIntentType.Block,  Value = 9 },
@@ -47,7 +47,7 @@ namespace BondBound
             Reg(new EnemyDefinition
             {
                 Id = "flame_sprite", Name = "Flame Sprite", Emoji = "🔥",
-                BaseHp = 36, Acts = new() { 1, 2 }, IsElite = false, IsBoss = false,
+                BaseHp = 62, Acts = new() { 1, 2 }, IsElite = false, IsBoss = false,
                 Pattern = new()
                 {
                     new EnemyAction { Type = EnemyIntentType.Burn,   Value = 6,  StatusToApply = StatusType.Burn, StatusStacks = 2 },
@@ -60,7 +60,7 @@ namespace BondBound
             Reg(new EnemyDefinition
             {
                 Id = "storm_crow", Name = "Storm Crow", Emoji = "🦅",
-                BaseHp = 44, Acts = new() { 2 }, IsElite = false, IsBoss = false,
+                BaseHp = 72, Acts = new() { 2 }, IsElite = false, IsBoss = false,
                 Pattern = new()
                 {
                     new EnemyAction { Type = EnemyIntentType.Shock,  Value = 8,  StatusToApply = StatusType.Shock, StatusStacks = 2 },
@@ -74,7 +74,7 @@ namespace BondBound
             Reg(new EnemyDefinition
             {
                 Id = "earth_golem", Name = "Earth Golem", Emoji = "🗿",
-                BaseHp = 72, Acts = new() { 1, 2 }, IsElite = true, IsBoss = false,
+                BaseHp = 120, Acts = new() { 1, 2 }, IsElite = true, IsBoss = false,
                 Pattern = new()
                 {
                     new EnemyAction { Type = EnemyIntentType.Block,      Value = 12 },
@@ -89,7 +89,7 @@ namespace BondBound
             Reg(new EnemyDefinition
             {
                 Id = "shadow_wraith", Name = "Shadow Wraith", Emoji = "👻",
-                BaseHp = 58, Acts = new() { 2, 3 }, IsElite = true, IsBoss = false,
+                BaseHp = 100, Acts = new() { 2, 3 }, IsElite = true, IsBoss = false,
                 Pattern = new()
                 {
                     new EnemyAction { Type = EnemyIntentType.Shock,  Value = 0,  StatusToApply = StatusType.Shock, StatusStacks = 3 },
@@ -99,12 +99,28 @@ namespace BondBound
                 }
             });
 
+            // ── Act 1 Boss ────────────────────────────────────────────────────
+
+            Reg(new EnemyDefinition
+            {
+                Id = "cinder_warden", Name = "Cinder Warden", Emoji = "🦁",
+                BaseHp = 160, Acts = new() { 1 }, IsElite = false, IsBoss = true,
+                Pattern = new()
+                {
+                    new EnemyAction { Type = EnemyIntentType.Attack,    Value = 14 },
+                    new EnemyAction { Type = EnemyIntentType.Burn,      Value = 8,  StatusToApply = StatusType.Burn, StatusStacks = 2 },
+                    new EnemyAction { Type = EnemyIntentType.Block,     Value = 10 },
+                    new EnemyAction { Type = EnemyIntentType.BigAttack, Value = 22 },
+                    new EnemyAction { Type = EnemyIntentType.Burn,      Value = 12, StatusToApply = StatusType.Burn, StatusStacks = 3 },
+                }
+            });
+
             // ── Act 2 Boss ────────────────────────────────────────────────────
 
             Reg(new EnemyDefinition
             {
                 Id = "inferno_drake", Name = "Inferno Drake", Emoji = "🐉",
-                BaseHp = 120, Acts = new() { 2 }, IsElite = false, IsBoss = true,
+                BaseHp = 200, Acts = new() { 2 }, IsElite = false, IsBoss = true,
                 Pattern = new()
                 {
                     new EnemyAction { Type = EnemyIntentType.Burn,       Value = 8,  StatusToApply = StatusType.Burn, StatusStacks = 3 },
@@ -120,7 +136,7 @@ namespace BondBound
             Reg(new EnemyDefinition
             {
                 Id = "void_architect", Name = "Void Architect", Emoji = "🌀",
-                BaseHp = 160, Acts = new() { 3 }, IsElite = false, IsBoss = true,
+                BaseHp = 260, Acts = new() { 3 }, IsElite = false, IsBoss = true,
                 Pattern = new()
                 {
                     new EnemyAction { Type = EnemyIntentType.Shock,      Value = 0,  StatusToApply = StatusType.Shock, StatusStacks = 4 },

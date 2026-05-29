@@ -44,6 +44,8 @@ namespace BondBound
             BuildHud(state);
             _root.AddChild(new HSeparator());
             BuildHand(state);
+            _root.AddChild(new HSeparator());
+            BuildLog(state);
 
             if (state.Phase == CombatPhase.Victory)
                 BuildOverlay("⚔️ Victory!", UI.AccentGold);
@@ -238,6 +240,16 @@ namespace BondBound
 
             hbox.AddChild(UI.MakeLabel($"Energy: {state.Energy}/{state.MaxEnergy}", 14));
 
+            // Combo counter
+            string comboText = $"Cards: {state.CardsPlayedThisTurn}";
+            Color comboColor = UI.TextDim;
+            if (state.ComboActive)
+            {
+                comboText += " ⚡ COMBO";
+                comboColor = UI.AccentGold;
+            }
+            hbox.AddChild(UI.MakeLabel(comboText, 13, comboColor));
+
             hbox.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.Expand });
 
             // Deck / discard
@@ -399,7 +411,19 @@ namespace BondBound
                     StatusType.Vulnerable => "🎯",
                     _                     => "?"
                 };
-                row.AddChild(UI.MakeLabel($"{emoji}{s.Stacks}", 11, UI.TextDim));
+                string tooltip = s.Type switch
+                {
+                    StatusType.Burn       => $"Burn: deals {s.Stacks} damage at the start of your turn, then decreases by 1",
+                    StatusType.Shock      => $"Shock: held until detonated by Wraith Pulse (3 dmg/stack)",
+                    StatusType.Thorns     => $"Thorns: reflects {s.Stacks} damage to attackers on each hit",
+                    StatusType.Regen      => $"Regen: restores {s.Stacks} HP at the start of your turn, then decreases by 1",
+                    StatusType.Weak       => "Weak: this unit deals 25% less damage",
+                    StatusType.Vulnerable => "Vulnerable: this unit takes 50% more damage",
+                    _                     => ""
+                };
+                var label = UI.MakeLabel($"{emoji}{s.Stacks}", 11, UI.TextDim);
+                label.TooltipText = tooltip;
+                row.AddChild(label);
             }
             return row;
         }
@@ -412,6 +436,21 @@ namespace BondBound
             if (card == null) return false;
             var def = CardDB.Singleton.Get(card.DefinitionId);
             return def.Tags.Contains(CardTag.Attack);
+        }
+
+        private void BuildLog(CombatState state)
+        {
+            var logBox = UI.MakeVBox(2);
+            logBox.CustomMinimumSize = new Vector2(0, 60);
+            _root.AddChild(logBox);
+
+            var recent = state.Log.TakeLast(4).ToList();
+            foreach (var entry in recent)
+            {
+                var line = UI.MakeLabel(entry, 10, UI.TextDim);
+                line.AutowrapMode = TextServer.AutowrapMode.Word;
+                logBox.AddChild(line);
+            }
         }
 
         private void BuildOverlay(string text, Color color)

@@ -392,9 +392,25 @@ namespace BondBound
             if (pool.Count == 0) pool = EnemyDB.Singleton.GetForNode(1, isElite, isBoss);
             if (pool.Count == 0) pool = EnemyDB.Singleton.GetForNode(1, false, false);
 
-            // Normal battle: 1 enemy; elite/boss: 1 enemy (bosses are solo)
-            var picked = pool[_rng.Next(pool.Count)];
-            return new List<EnemyDefinition> { picked };
+            // Boss and elite: always solo
+            if (isBoss || isElite)
+                return new List<EnemyDefinition> { pool[_rng.Next(pool.Count)] };
+
+            // Normal battles: count scales by row
+            int count;
+            if (node.Row == 0)
+                count = 1;                                        // intro fight
+            else if (node.Row <= 3)
+                count = _rng.Next(2) == 0 ? 1 : 2;              // 50% 1, 50% 2
+            else if (node.Row <= 6)
+                count = 2;                                        // always 2
+            else
+                count = _rng.Next(10) < 6 ? 2 : 3;              // 60% 2, 40% 3
+
+            var result = new List<EnemyDefinition>(count);
+            for (int i = 0; i < count; i++)
+                result.Add(pool[_rng.Next(pool.Count)]);
+            return result;
         }
 
         private BattleResult BuildBattleResult(MapNode node)
