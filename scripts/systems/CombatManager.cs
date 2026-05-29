@@ -114,12 +114,21 @@ namespace BondBound
             _lastCardInstanceId = card.InstanceId;
 
             if (def.Tags.Contains(CardTag.Block))
-                EvalMosscubAura();
+                EvalMosscubBlockAura();
 
-            // Mosscub stage-2 Bramblbear passive: when a block card is played, +1 Thorns
+            // Mosscub stage-2 Grizzquake passive: block cards grant +1 Thorns
             EvalMosscubThornsAura(def);
 
-            State.DiscardPile.Add(card);
+            // Exhaust: permanently remove the card from play for this battle
+            if (def.Tags.Contains(CardTag.Exhaust))
+            {
+                State.ExhaustedPile.Add(card);
+                Log($"{def.Name} exhausted.");
+            }
+            else
+            {
+                State.DiscardPile.Add(card);
+            }
 
             if (shouldRepeat)
             {
@@ -225,6 +234,7 @@ namespace BondBound
                     target.CurrentHp = 0;
                     target.IsKnockedOut = true;
                     Log($"{target.Name} is knocked out!");
+                    SuspendCreatureCards(target.Id);
                 }
             }
         }
@@ -258,6 +268,13 @@ namespace BondBound
                 {
                     bonus = 2;
                     State.HeatAuraUsedThisTurn = true;
+                }
+
+                // BonusNextAttack: consumed by EvalKindlpupAura (Synergy Pulse trigger)
+                if (State.BonusNextAttack > 0)
+                {
+                    bonus += State.BonusNextAttack;
+                    State.BonusNextAttack = 0;
                 }
 
                 // Source Weak modifier
@@ -349,6 +366,7 @@ namespace BondBound
             {
                 EvalKindlpupAura();
                 EvalMosscubAura();
+                EvalSparkwispAura();
             };
 
             ctx.HealCreature = (cid, amount) =>
@@ -381,18 +399,39 @@ namespace BondBound
 
         private void EvalKindlpupAura()
         {
-            // Heat Aura is handled inside DealDamage closure via HeatAuraUsedThisTurn
+            // Re-arm Heat Aura so it fires again this turn, and queue +3 on the next attack.
+            var kindl = State.Creatures.FirstOrDefault(c => c.Id == CreatureId.Kindlpup && !c.IsKnockedOut);
+            if (kindl == null) return;
+            State.HeatAuraUsedThisTurn = false;
+            State.BonusNextAttack += 3;
         }
 
         private void EvalMosscubAura()
         {
-            // Root Stance (stage 1+): When a block card is played, all creatures gain +2 block
+            // Manually-triggered version (Synergy Pulse): unconditional +5 Block for all living creatures.
+            foreach (var c in State.Creatures.Where(c => !c.IsKnockedOut))
+                c.Block += 5;
+        }
+
+        private void EvalMosscubBlockAura()
+        {
+            // Block-card trigger (stage 1+): all living creatures gain +2 Block.
             var mosscub = State.Creatures.FirstOrDefault(c => c.Id == CreatureId.Mosscub && !c.IsKnockedOut);
             if (mosscub != null && mosscub.Stage >= EvolutionStage.Stage1)
             {
                 foreach (var c in State.Creatures.Where(c => !c.IsKnockedOut))
                     c.Block += 2;
             }
+        }
+
+        private void EvalSparkwispAura()
+        {
+            // Manually-triggered version (Synergy Pulse): draw 1 card; if combo active, also gain 1 Energy.
+            var sparkwisp = State.Creatures.FirstOrDefault(c => c.Id == CreatureId.Sparkwisp && !c.IsKnockedOut);
+            if (sparkwisp == null) return;
+            DrawCardsFromPile(1);
+            if (State.ComboActive)
+                State.Energy = Math.Min(State.Energy + 1, State.MaxEnergy + 3);
         }
 
         private void EvalMosscubThornsAura(CardDefinition def)
@@ -430,7 +469,13 @@ namespace BondBound
                 if (burn != null)
                 {
                     c.CurrentHp -= burn.Stacks;
-                    if (c.CurrentHp <= 0) { c.CurrentHp = 0; c.IsKnockedOut = true; }
+                    if (c.CurrentHp <= 0)
+                    {
+                        c.CurrentHp = 0;
+                        c.IsKnockedOut = true;
+                        Log($"{c.Name} is knocked out by Burn!");
+                        SuspendCreatureCards(c.Id);
+                    }
                     burn.Stacks--;
                     if (burn.Stacks <= 0) c.Statuses.Remove(burn);
                 }
@@ -529,6 +574,28 @@ namespace BondBound
                 EmitStateChanged();
                 CombatEnded?.Invoke(false);
             }
+        }
+
+        // ── KO card suspension ────────────────────────────────────────────────
+
+        private void SuspendCreatureCards(CreatureId id)
+        {
+            bool IsOwned(CardInstance c)
+            {
+                var def = CardDB.Singleton.Get(c.DefinitionId);
+                return def.Owner == id;
+            }
+
+            var fromHand = State.Hand.Where(IsOwned).ToList();
+            foreach (var c in fromHand) { State.Hand.Remove(c); State.SuspendedCards.Add(c); }
+
+            var fromDraw = State.DrawPile.Where(IsOwned).ToList();
+            foreach (var c in fromDraw) { State.DrawPile.Remove(c); State.SuspendedCards.Add(c); }
+
+            var fromDiscard = State.DiscardPile.Where(IsOwned).ToList();
+            foreach (var c in fromDiscard) { State.DiscardPile.Remove(c); State.SuspendedCards.Add(c); }
+
+            Log($"{id}'s signature cards suspended.");
         }
 
         // ── Utilities ─────────────────────────────────────────────────────────

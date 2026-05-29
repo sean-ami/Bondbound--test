@@ -488,8 +488,8 @@ namespace BondBound
             Register(new CardDefinition
             {
                 Id = "ignition", Name = "Ignition", EnergyCost = 1, Rarity = Rarity.Uncommon,
-                Description = "Apply 3 Burn to target.", Tags = new() { CardTag.Utility },
-                Effect = ctx => { if (ctx.TargetEnemyId != null) ctx.ApplyStatusToEnemy(ctx.TargetEnemyId, StatusType.Burn, 3); }
+                Description = "Apply 3 Burn to target enemy.", Tags = new() { CardTag.Attack, CardTag.Utility },
+                Effect = ctx => ctx.ApplyStatusToEnemy(ctx.TargetEnemyId!, StatusType.Burn, 3)
             });
             Register(new CardDefinition
             {
@@ -506,7 +506,8 @@ namespace BondBound
             Register(new CardDefinition
             {
                 Id = "synergy_pulse", Name = "Synergy Pulse", EnergyCost = 2, Rarity = Rarity.Rare,
-                Description = "Trigger all three passive auras simultaneously.", Tags = new() { CardTag.Utility },
+                Description = "Trigger all passives: Kindlpup gains +3 on next attack, all creatures gain 5 Block, Sparkwisp draws 1 (and gains 1 Energy if combo active).",
+                Tags = new() { CardTag.Utility },
                 Effect = ctx => ctx.TriggerAllPassives()
             });
             Register(new CardDefinition
@@ -527,8 +528,9 @@ namespace BondBound
             Register(new CardDefinition
             {
                 Id = "bond_echo", Name = "Bond Echo", EnergyCost = 0, Rarity = Rarity.Rare,
-                Description = "Double Bond earned from this battle.", Tags = new() { CardTag.Utility },
-                Effect = ctx => ctx.AddBondMultiplier(2f)
+                Description = "Exhaust. Double Bond earned from this battle. (One use — removed from deck when played.)",
+                Tags = new() { CardTag.Utility, CardTag.Exhaust },
+                Effect = ctx => ctx.AddBondMultiplier(1f)
             });
             Register(new CardDefinition
             {
@@ -540,7 +542,7 @@ namespace BondBound
             Register(new CardDefinition
             {
                 Id = "natures_blessing", Name = "Nature's Blessing", EnergyCost = 0, Rarity = Rarity.Rare,
-                Description = "Fully restore the lowest-HP creature's HP.",
+                Description = "Fully restore the lowest-HP living creature's HP. Cannot target KO'd creatures.",
                 Tags = new() { CardTag.Utility },
                 Effect = ctx =>
                 {

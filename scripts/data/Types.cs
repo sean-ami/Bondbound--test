@@ -10,7 +10,7 @@ namespace BondBound
     public enum Rarity { Common, Uncommon, Rare, Signature }
     public enum StatusType { Burn, Shock, Thorns, Regen, Weak, Vulnerable }
     public enum NodeType { Battle, Elite, Shop, Rest, Event, Boss }
-    public enum CardTag { Attack, Block, Draw, MultiHit, Aoe, EnergyGen, Utility }
+    public enum CardTag { Attack, Block, Draw, MultiHit, Aoe, EnergyGen, Utility, Exhaust }
     public enum GamePhase
     {
         MainMenu, Map, Combat, BondSummary, Evolution, Draft, Shop, Rest, Event, Victory, GameOver
@@ -186,7 +186,10 @@ namespace BondBound
         public bool HeatAuraUsedThisTurn;
         public bool MomentumCarryover;
         public bool ArcAuraUsedThisTurn;
+        public int BonusNextAttack;
         public float BondMultiplier = 1f;
+        public List<CardInstance> ExhaustedPile = new();
+        public List<CardInstance> SuspendedCards = new();
         public List<string> Log = new();
     }
 
@@ -208,6 +211,24 @@ namespace BondBound
         public bool WasElite;
         public bool WasBoss;
         public float BondMultiplier = 1f;
+        public int GoldEarned;
+        public string GoldBreakdown = "";
+    }
+
+    // ── Items ─────────────────────────────────────────────────────────────────
+
+    public class ItemDefinition
+    {
+        public string Id = "";
+        public string Name = "";
+        public string Emoji = "";
+        public string Description = "";
+        public int ShopCost;
+    }
+
+    public class ItemInstance
+    {
+        public string DefinitionId = "";
     }
 
     // ── Card Effect Context ────────────────────────────────────────────────────
