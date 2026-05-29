@@ -18,6 +18,19 @@ namespace BondBound
         public BattleResult? LastBattleResult { get; private set; }
         public List<CreatureId> PendingEvolutions { get; private set; } = new();
         public CreatureId? JustEvolvedCreature { get; private set; }
+        public List<ItemInstance> Items { get; private set; } = new();
+
+        // ── Item catalogue ────────────────────────────────────────────────────
+        private static readonly Dictionary<string, ItemDefinition> ItemCatalog = new()
+        {
+            ["revive_shard"] = new ItemDefinition
+            {
+                Id = "revive_shard", Name = "Revive Shard", Emoji = "💎",
+                Description = "Revive one KO'd creature with 25% of their max HP. Used between battles.",
+                ShopCost = 70
+            }
+        };
+        public static IReadOnlyDictionary<string, ItemDefinition> ItemDefs => ItemCatalog;
 
         // ── Events ─────────────────────────────────────────────────────────────
         public event Action<GamePhase>? PhaseChanged;
@@ -52,6 +65,7 @@ namespace BondBound
                     Deck.Add(NewInstance(cardDef.Id));
             }
 
+            Items = new List<ItemInstance>();
             GenerateMap();
             SetPhase(GamePhase.Map);
         }
@@ -253,6 +267,27 @@ namespace BondBound
 
         public void GoToMainMenu() => SetPhase(GamePhase.MainMenu);
 
+        public void UseReviveShard(CreatureId target)
+        {
+            var creature = Creatures.First(c => c.Id == target);
+            if (!creature.IsKnockedOut) return;
+            var shard = Items.FirstOrDefault(i => i.DefinitionId == "revive_shard");
+            if (shard == null) return;
+            creature.IsKnockedOut = false;
+            creature.CurrentHp = Math.Max(1, (int)(creature.MaxHp * 0.25f));
+            Items.Remove(shard);
+            EmitStateUpdated();
+        }
+
+        public void BuyItem(string itemId)
+        {
+            var def = ItemCatalog[itemId];
+            if (Gold < def.ShopCost || Items.Count >= 6) return;
+            Gold -= def.ShopCost;
+            Items.Add(new ItemInstance { DefinitionId = itemId });
+            EmitStateUpdated();
+        }
+
         // ── Map generation ────────────────────────────────────────────────────
 
         private void GenerateMap()
@@ -422,12 +457,23 @@ namespace BondBound
             bool noKO = Creatures.All(c => !c.IsKnockedOut);
             if (noKO) bonuses.Add(new BondBonus { Label = "No KO", Amount = 1 });
 
-            if (node.Type == NodeType.Elite || node.Type == NodeType.Boss)
-                bonuses.Add(new BondBonus { Label = node.Type == NodeType.Boss ? "Boss" : "Elite", Amount = 3 });
+            bool isElite = node.Type == NodeType.Elite;
+            bool isBoss  = node.Type == NodeType.Boss;
+            if (isElite || isBoss)
+                bonuses.Add(new BondBonus { Label = isBoss ? "Boss" : "Elite", Amount = 3 });
 
             bonuses.Add(new BondBonus { Label = "Ambient", Amount = 1 });
 
             int total = (int)((bondBase + bonuses.Sum(b => b.Amount)) * mult);
+
+            // Gold reward
+            int baseGold  = isBoss ? 40 : isElite ? 26 : 14;
+            int parTurns  = isBoss ? 12 : isElite ? 9 : 7;
+            int perfBonus = CombatManager.Singleton.State.Turn <= parTurns
+                            ? (int)(baseGold * 0.30f) : 0;
+            int totalGold = baseGold + perfBonus;
+            Gold += totalGold;
+
             return new BattleResult
             {
                 Victory = true,
@@ -435,9 +481,13 @@ namespace BondBound
                 BondBonuses = bonuses,
                 BondTotal = total,
                 NoKO = noKO,
-                WasElite = node.Type == NodeType.Elite,
-                WasBoss  = node.Type == NodeType.Boss,
-                BondMultiplier = mult
+                WasElite = isElite,
+                WasBoss  = isBoss,
+                BondMultiplier = mult,
+                GoldEarned = totalGold,
+                GoldBreakdown = perfBonus > 0
+                    ? $"Base: {baseGold} + Performance: +{perfBonus}"
+                    : $"Base: {baseGold}"
             };
         }
 

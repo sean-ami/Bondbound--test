@@ -100,6 +100,47 @@ namespace BondBound
                 vbox.AddChild(removeRow);
             }
 
+            // Items section
+            vbox.AddChild(UI.MakeLabel("Items:", 16, UI.TextDim));
+
+            var itemRow = UI.MakeHBox(12);
+            itemRow.Alignment = BoxContainer.AlignmentMode.Center;
+
+            var shardDef = GameState.ItemDefs["revive_shard"];
+            int shardCount = gs.Items.Count(i => i.DefinitionId == "revive_shard");
+            bool canBuyShard = gs.Gold >= shardDef.ShopCost && shardCount < 2;
+
+            var shardPanel = UI.MakePanel(UI.BgCard);
+            shardPanel.CustomMinimumSize = new Vector2(200, 120);
+            var sv = UI.MakeVBox(6);
+            sv.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            sv.AddThemeConstantOverride("margin_left",   10);
+            sv.AddThemeConstantOverride("margin_right",  10);
+            sv.AddThemeConstantOverride("margin_top",    10);
+            sv.AddThemeConstantOverride("margin_bottom", 10);
+            shardPanel.AddChild(sv);
+
+            sv.AddChild(UI.MakeLabel($"{shardDef.Emoji} {shardDef.Name}", 14, new Color("#aaaaff")));
+            sv.AddChild(UI.MakeLabel($"Owned: {shardCount}", 11, UI.TextDim));
+            var shardDesc = UI.MakeLabel(shardDef.Description, 10, UI.TextDim);
+            shardDesc.AutowrapMode = TextServer.AutowrapMode.Word;
+            shardDesc.SizeFlagsVertical = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
+            sv.AddChild(shardDesc);
+
+            var shardPriceLabel = UI.MakeLabel($"💰 {shardDef.ShopCost}", 13,
+                canBuyShard ? UI.AccentGold : new Color("#cc4444"));
+            shardPriceLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            sv.AddChild(shardPriceLabel);
+
+            var shardBtn = UI.MakeButton("Buy", canBuyShard ? UI.HpGreen : UI.TextDim);
+            shardBtn.Disabled = !canBuyShard;
+            shardBtn.CustomMinimumSize = new Vector2(160, 32);
+            shardBtn.Pressed += () => gs.BuyItem("revive_shard");
+            sv.AddChild(shardBtn);
+
+            itemRow.AddChild(shardPanel);
+            vbox.AddChild(itemRow);
+
             // Leave button
             var leaveBtn = UI.MakeButton("Leave →", UI.AccentFire);
             leaveBtn.CustomMinimumSize = new Vector2(160, 44);
