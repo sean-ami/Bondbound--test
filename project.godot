@@ -10,16 +10,18 @@ config_version=5
 config/name="BondBound"
 config/description="Roguelike Creature Deckbuilder"
 run/main_scene="res://scenes/Main.tscn"
-config/features=PackedStringArray("4.4", "C#", "Forward Plus")
+config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
-GameState="*res://scripts/systems/GameState.cs"
-CombatManager="*res://scripts/systems/CombatManager.cs"
-CardDB="*res://scripts/data/CardDB.cs"
-CreatureDB="*res://scripts/data/CreatureDB.cs"
-EnemyDB="*res://scripts/data/EnemyDB.cs"
+Enums="*res://scripts/data/Enums.gd"
+CreatureDB="*res://scripts/data/CreatureDB.gd"
+EnemyDB="*res://scripts/data/EnemyDB.gd"
+CardDB="*res://scripts/data/CardDB.gd"
+GameState="*res://scripts/systems/GameState.gd"
+CombatManager="*res://scripts/systems/CombatManager.gd"
+UI="*res://scripts/screens/UI.gd"
 
 [display]
 
