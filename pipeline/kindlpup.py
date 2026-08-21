@@ -1,9 +1,11 @@
 """
-kindlpup.py — BondBound style test: Kindlpup, a small fire wolf puppy.
+kindlpup.py — BondBound: Kindlpup, a small fire wolf puppy.
 
-Builds the creature procedurally (metaballs + primitives), applies the
-Dark Menagerie style from style_core, and renders a hero still and/or an
-8-frame idle loop.
+Built to the character turnaround (2026-08): lean wolf-pup standing on real
+legs with light grey socks, charcoal-grey coat, light chest/belly, brow dots,
+protruding muzzle with black nose, amber structured eyes, one upright ear and
+one tip-folded ear, spitz tail curling over the back, and flame anklets
+ringing each leg above the paw.
 
 Run headless via Blender CLI:
     blender -b -P pipeline/kindlpup.py -- --output renders/kindlpup/ --mode still
@@ -23,15 +25,14 @@ from mathutils import Euler, Matrix, Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import style_core as sc
 
-# ── Palette (Primal/Ember family, dark-first per art-direction reference:
-#    charcoal body, grey-tan markings, rust inner ear, amber eyes,
-#    flame-wreathed paws and tail) ─────────────────────────────────────────────
+# ── Palette (turnaround reference: grey-charcoal coat, light grey-tan
+#    chest/socks/muzzle, amber eyes, orange flame anklets) ────────────────────
 
-BODY_LIT     = "#3A2C2C"   # charcoal with a warm tint
-BODY_SHADOW  = "#1E1622"   # near-black, violet-shifted
-MARKING_LIT  = "#96826E"   # grey-tan muzzle / brows / chest / toes
-INNER_EAR    = "#C2542E"   # rust inner ear
-OUTLINE      = "#140A0E"
+BODY_LIT     = "#3A383C"   # dark neutral-grey coat
+BODY_SHADOW  = "#221C28"   # near-black, violet-shifted
+MARKING_LIT  = "#A89A8C"   # light grey-tan chest / belly / socks / chin / brows
+INNER_EAR    = "#8E6E72"   # muted pink-grey inner ear
+OUTLINE      = "#16121A"
 GLOW         = "#FF6B1A"   # rim light + rim emission
 EYE_COLOR    = "#FFA226"   # amber iris
 EYE_STRENGTH = 3.0         # soft glow, not a lamp — structure carries the eye
@@ -42,11 +43,11 @@ FLAME_STRENGTH = 8.0
 
 # ── Construction helpers ─────────────────────────────────────────────────────
 
-HEAD_CENTER = Vector((0.0, -0.14, 0.62))
+HEAD_CENTER = Vector((0.0, -0.10, 0.74))
 
 def _head_tilted(p: Vector, tilt: float) -> Vector:
     """Rotate a point around the head center about the Y (front) axis —
-    the ~10° curious-puppy head tilt."""
+    the slight curious-puppy head tilt (hero shots only, kept subtle)."""
     rot = Matrix.Rotation(tilt, 4, "Y")
     return HEAD_CENTER + rot @ (Vector(p) - HEAD_CENTER)
 
@@ -66,100 +67,119 @@ def _sphere(name, location, radius, scale=(1, 1, 1)) -> bpy.types.Object:
     return obj
 
 
-def build_kindlpup(seed: int = 7) -> dict:
-    """Procedural Kindlpup. Returns root empty, body mesh, and glow materials."""
-    rng = random.Random(seed)
-    head_tilt = math.radians(10.0 + rng.uniform(-3.0, 3.0))
-    ear_jitter = math.radians(rng.uniform(-5.0, 5.0))
-    print(f"[kindlpup] seed {seed}: head tilt {math.degrees(head_tilt):.1f}°, "
-          f"ear jitter {math.degrees(ear_jitter):.1f}°")
-
-    scene = bpy.context.scene
-
-    # Materials
-    # Low rim strength keeps the charcoal body near-black (fire lives at the
-    # paws/tail/eyes, not across the coat — per the art-direction reference)
-    body_mat = sc.make_toon_material("KindlpupBody", BODY_LIT, BODY_SHADOW,
-                                     OUTLINE, GLOW, rim_strength=0.8)
-    marking_mat = sc.make_toon_material(
-        "KindlpupMarking", MARKING_LIT,
-        sc.violet_shift(sc.hex_to_rgba(MARKING_LIT)), OUTLINE, GLOW,
-        rim_strength=0.8)
-    inner_mat = sc.make_toon_material(
-        "KindlpupInnerEar", INNER_EAR,
-        sc.violet_shift(sc.hex_to_rgba(INNER_EAR)), OUTLINE, GLOW)
-    eye_mat = sc.make_glow_material("KindlpupEyes", EYE_COLOR, EYE_STRENGTH)
-    flame_mat = sc.make_glow_material("KindlpupFlame", FLAME_COLOR, FLAME_STRENGTH)
-
-    # ── Body mass: metaballs for organic blob-blending (front = -Y) ──────────
-    mb_data = bpy.data.metaballs.new("KindlpupMB")
-    mb_data.resolution = 0.045
-    mb_obj = _link(bpy.data.objects.new("KindlpupMB", mb_data))
-
-    def ball(co, r, tilt_head=False):
-        el = mb_data.elements.new()
-        el.co = _head_tilted(co, head_tilt) if tilt_head else Vector(co)
-        el.radius = r
-
-    # Reference proportions: low-slung chunky body, huge head (~50% of the
-    # standing height incl. cheek ruff), short low muzzle, stubby legs.
-    # Metaball iso-surfaces sit at ~75% of element radius, so neighbouring
-    # elements overlap generously to blend into one connected mass.
-    ball((0.00,  0.08, 0.28), 0.30)            # body core (low)
-    ball((0.00,  0.22, 0.30), 0.25)            # rump
-    ball((0.00, -0.08, 0.28), 0.26)            # chest
-    ball((0.00, -0.10, 0.44), 0.22, True)      # short neck (head sits ON body)
-    ball((0.00, -0.14, 0.62), 0.33, True)      # head (huge)
-    ball((0.21, -0.16, 0.56), 0.13, True)      # cheek ruff R (widens the face)
-    ball((-0.21, -0.16, 0.56), 0.13, True)     # cheek ruff L
-    ball((0.00, -0.38, 0.53), 0.115, True)     # short muzzle, low on the face
-    # Stubby legs + oversized paws (cute-factor anchor)
-    for sx in (1, -1):
-        ball((sx * 0.14, -0.12, 0.12), 0.090)  # front leg
-        ball((sx * 0.145, -0.16, 0.07), 0.120) # front paw (oversized)
-        ball((sx * 0.15,  0.22, 0.12), 0.090)  # hind leg
-        ball((sx * 0.155,  0.24, 0.07), 0.110) # hind paw
-    # Bushy tail curling up at the side (visible from the hero 3/4 angle)
-    ball((0.08, 0.36, 0.30), 0.120)
-    ball((0.16, 0.42, 0.40), 0.105)
-    ball((0.19, 0.42, 0.52), 0.090)
-    ball((0.16, 0.37, 0.61), 0.075)
-
-    # Convert metaballs -> mesh
+def _mball_to_mesh(mb_obj, name):
     bpy.ops.object.select_all(action="DESELECT")
     mb_obj.select_set(True)
     bpy.context.view_layer.objects.active = mb_obj
     bpy.ops.object.convert(target="MESH")
-    body = bpy.context.active_object
-    body.name = "KindlpupBodyMesh"
+    mesh = bpy.context.active_object
+    mesh.name = name
+    return mesh
 
-    # ── Ears: large pointed cones, slightly too big for the head ─────────────
-    # Asymmetric ears (reference: one upright pointed ear, one floppy)
+
+# Leg anchor points (x, y): front pair then hind pair
+LEGS = [(0.13, -0.13), (-0.13, -0.13), (0.14, 0.24), (-0.14, 0.24)]
+
+
+def build_kindlpup(seed: int = 7) -> dict:
+    """Procedural Kindlpup per the character turnaround. Returns root empty,
+    body mesh, and glow materials."""
+    rng = random.Random(seed)
+    head_tilt = math.radians(5.0 + rng.uniform(-2.0, 2.0))
+    ear_jitter = math.radians(rng.uniform(-4.0, 4.0))
+    print(f"[kindlpup] seed {seed}: head tilt {math.degrees(head_tilt):.1f}°, "
+          f"ear jitter {math.degrees(ear_jitter):.1f}°")
+
+    # Materials
+    # Low rim strength keeps the coat dark (fire lives at the anklets/eyes)
+    body_mat = sc.make_toon_material("KindlpupBody", BODY_LIT, BODY_SHADOW,
+                                     OUTLINE, GLOW, rim_strength=0.5)
+    marking_mat = sc.make_toon_material(
+        "KindlpupMarking", MARKING_LIT,
+        sc.violet_shift(sc.hex_to_rgba(MARKING_LIT)), OUTLINE, GLOW,
+        rim_strength=0.5)
+    inner_mat = sc.make_toon_material(
+        "KindlpupInnerEar", INNER_EAR,
+        sc.violet_shift(sc.hex_to_rgba(INNER_EAR)), OUTLINE, GLOW)
+    nose_mat = sc.make_toon_material("KindlpupNose", "#1E1418", "#120C12",
+                                     OUTLINE, GLOW, rim_strength=0.6)
+    eye_mat = sc.make_glow_material("KindlpupEyes", EYE_COLOR, EYE_STRENGTH)
+    catch_mat = sc.make_glow_material("KindlpupCatchlight", CATCHLIGHT, 5.0)
+    flame_mat = sc.make_glow_material("KindlpupFlame", FLAME_COLOR, FLAME_STRENGTH)
+
+    # ── Dark coat mass (metaballs; front = -Y, ground = z 0) ─────────────────
+    mb_dark = bpy.data.metaballs.new("KindlpupDarkMB")
+    mb_dark.resolution = 0.045
+    dark_obj = _link(bpy.data.objects.new("KindlpupDarkMB", mb_dark))
+
+    def dark(co, r, tilt_head=False):
+        el = mb_dark.elements.new()
+        el.co = _head_tilted(co, head_tilt) if tilt_head else Vector(co)
+        el.radius = r
+
+    # Torso standing at leg height, fluffy chest ruff, slimmer rump
+    dark((0.00,  0.10, 0.42), 0.20)            # torso
+    dark((0.00,  0.22, 0.44), 0.18)            # rump
+    dark((0.00, -0.10, 0.46), 0.20)            # chest ruff
+    dark((0.13, -0.08, 0.44), 0.12)            # ruff side R
+    dark((-0.13, -0.08, 0.44), 0.12)           # ruff side L
+    dark((0.00, -0.08, 0.58), 0.16, True)      # neck
+    # Wolf-pup head with a real protruding muzzle
+    dark((0.00, -0.10, 0.74), 0.22, True)      # head
+    dark((0.14, -0.10, 0.68), 0.10, True)      # cheek R
+    dark((-0.14, -0.10, 0.68), 0.10, True)     # cheek L
+    dark((0.00, -0.16, 0.80), 0.12, True)      # forehead crown
+    dark((0.00, -0.28, 0.70), 0.095, True)     # muzzle base
+    dark((0.00, -0.36, 0.67), 0.070, True)     # muzzle tip (slight droop)
+    # Upper legs (dark, down past the knee — light socks take over below,
+    # interpenetrating so the leg reads as one continuous limb)
+    for fx, fy in LEGS:
+        dark((fx * 0.92, fy * 0.92, 0.40), 0.100)   # shoulder/hip blend
+        dark((fx, fy, 0.32), 0.090)                 # upper leg
+        dark((fx, fy, 0.25), 0.075)                 # knee
+    # Spitz tail: thick fluffy curl hugging the back, tip pointing forward
+    dark((0.00, 0.30, 0.48), 0.110)
+    dark((0.02, 0.34, 0.60), 0.100)
+    dark((0.04, 0.28, 0.68), 0.090)
+    dark((0.05, 0.19, 0.68), 0.080)
+    dark((0.06, 0.13, 0.62), 0.065)
+
+    body = _mball_to_mesh(dark_obj, "KindlpupBodyMesh")
+
+    # ── Ears: one fully upright (far side), one with a folded tip (camera
+    #    side, +X) — joined into the body for a single outline shell ─────────
     ear_objs = []
 
-    # Upright ear on the far side, floppy ear toward the hero camera (+X),
-    # matching the reference composition
-    up_loc = _head_tilted((-0.16, -0.10, 0.90), head_tilt)
+    up_loc = _head_tilted((-0.145, -0.05, 0.94), head_tilt)
     bpy.ops.mesh.primitive_cone_add(
-        vertices=16, radius1=0.115, radius2=0.014, depth=0.36, location=up_loc)
+        vertices=16, radius1=0.10, radius2=0.012, depth=0.30, location=up_loc)
     ear_up = bpy.context.active_object
     ear_up.name = "KindlpupEarUp"
     ear_up.rotation_euler = Euler(
-        (math.radians(-8), math.radians(-12) - ear_jitter + head_tilt, 0.0))
+        (math.radians(-6), math.radians(-10) - ear_jitter + head_tilt, 0.0))
     bpy.ops.object.shade_smooth()
     ear_objs.append(ear_up)
 
-    flop_loc = _head_tilted((0.27, -0.10, 0.72), head_tilt)
+    tip_loc = _head_tilted((0.15, -0.05, 0.90), head_tilt)
     bpy.ops.mesh.primitive_cone_add(
-        vertices=16, radius1=0.100, radius2=0.018, depth=0.30, location=flop_loc)
-    ear_flop = bpy.context.active_object
-    ear_flop.name = "KindlpupEarFlop"
-    ear_flop.rotation_euler = Euler(
-        (math.radians(10), math.radians(100) + ear_jitter + head_tilt, 0.0))
+        vertices=16, radius1=0.10, radius2=0.030, depth=0.22, location=tip_loc)
+    ear_tip = bpy.context.active_object
+    ear_tip.name = "KindlpupEarTipped"
+    ear_tip.rotation_euler = Euler(
+        (math.radians(-6), math.radians(10) + ear_jitter + head_tilt, 0.0))
     bpy.ops.object.shade_smooth()
-    ear_objs.append(ear_flop)
+    ear_objs.append(ear_tip)
 
-    # Join ears into the body so one outline shell covers the silhouette
+    fold_loc = _head_tilted((0.17, -0.05, 0.975), head_tilt)
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=12, radius1=0.06, radius2=0.012, depth=0.09, location=fold_loc)
+    ear_fold = bpy.context.active_object
+    ear_fold.name = "KindlpupEarFold"
+    ear_fold.rotation_euler = Euler(
+        (math.radians(4), math.radians(125) + ear_jitter + head_tilt, 0.0))
+    bpy.ops.object.shade_smooth()
+    ear_objs.append(ear_fold)
+
     bpy.ops.object.select_all(action="DESELECT")
     body.select_set(True)
     for e in ear_objs:
@@ -167,7 +187,6 @@ def build_kindlpup(seed: int = 7) -> dict:
     bpy.context.view_layer.objects.active = body
     bpy.ops.object.join()
 
-    # Organic rounding + smooth normals
     subsurf = body.modifiers.new("Round", "SUBSURF")
     subsurf.levels = 1
     subsurf.render_levels = 1
@@ -177,109 +196,131 @@ def build_kindlpup(seed: int = 7) -> dict:
         bpy.ops.object.shade_smooth()
 
     body.data.materials.append(body_mat)
-    sc.add_outline(body, OUTLINE, thickness_pct=0.02)
+    sc.add_outline(body, OUTLINE, thickness_pct=0.018)
 
-    # ── Overlays: rust inner ear + grey-tan markings ─────────────────────────
-    accent_objs = []
+    # ── Light grey-tan mass: chest/belly, chin, socks + paws, tail tip ───────
+    mb_light = bpy.data.metaballs.new("KindlpupLightMB")
+    mb_light.resolution = 0.04
+    light_obj = _link(bpy.data.objects.new("KindlpupLightMB", mb_light))
 
-    # Inner ear on the upright ear only
-    loc = _head_tilted((-0.16, -0.155, 0.885), head_tilt)
+    def light(co, r, tilt_head=False):
+        el = mb_light.elements.new()
+        el.co = _head_tilted(co, head_tilt) if tilt_head else Vector(co)
+        el.radius = r
+
+    light((0.00, -0.22, 0.40), 0.130)          # chest patch
+    light((0.00, -0.14, 0.28), 0.100)          # lower chest
+    light((0.00,  0.02, 0.26), 0.090)          # belly
+    light((0.00, -0.345, 0.635), 0.045, True)  # chin / muzzle underside
+    for fx, fy in LEGS:                        # socks: knee -> paw, continuous
+        light((fx, fy, 0.26), 0.060)           # overlaps the dark knee
+        light((fx, fy, 0.19), 0.066)
+        light((fx, fy, 0.12), 0.062)
+        light((fx, fy - (0.012 if fy < 0 else -0.012), 0.065), 0.080)  # paw
+    light((0.065, 0.11, 0.58), 0.050)          # tail tip
+
+    light_mesh = _mball_to_mesh(light_obj, "KindlpupLightMesh")
+    light_sub = light_mesh.modifiers.new("Round", "SUBSURF")
+    light_sub.levels = 1
+    light_sub.render_levels = 1
+    try:
+        bpy.ops.object.shade_auto_smooth(angle=math.radians(40))
+    except AttributeError:
+        bpy.ops.object.shade_smooth()
+    light_mesh.data.materials.append(marking_mat)
+    sc.add_outline(light_mesh, OUTLINE, thickness_pct=0.015)
+
+    # ── Face details ─────────────────────────────────────────────────────────
+    accent_objs = [light_mesh]
+
+    # Inner ear on the upright ear
+    loc = _head_tilted((-0.145, -0.105, 0.93), head_tilt)
     bpy.ops.mesh.primitive_cone_add(
-        vertices=12, radius1=0.060, radius2=0.010, depth=0.20, location=loc)
+        vertices=12, radius1=0.055, radius2=0.009, depth=0.16, location=loc)
     inner = bpy.context.active_object
     inner.name = "KindlpupInnerEar"
     inner.rotation_euler = Euler(
-        (math.radians(-10), math.radians(-12) - ear_jitter + head_tilt, 0.0))
+        (math.radians(-8), math.radians(-10) - ear_jitter + head_tilt, 0.0))
     bpy.ops.object.shade_smooth()
     inner.data.materials.append(inner_mat)
     accent_objs.append(inner)
 
-    # Grey-tan markings: chest, muzzle patch, brow dots, toe caps
-    marking_objs = []
-    marking_objs.append(_sphere(
-        "KindlpupChestFluff", (0.0, -0.28, 0.34), 0.13, (1.1, 0.6, 1.15)))
-    marking_objs.append(_sphere(
-        "KindlpupMuzzlePatch",
-        _head_tilted((0.0, -0.44, 0.52), head_tilt), 0.08, (1.0, 0.45, 0.85)))
+    # Brow dots (light, mostly flush with the forehead)
     for sx in (1, -1):
-        marking_objs.append(_sphere(
-            f"KindlpupToes{'R' if sx > 0 else 'L'}",
-            (sx * 0.145, -0.27, 0.07), 0.055, (1.0, 0.5, 0.8)))
-    for obj in marking_objs:
-        obj.data.materials.append(marking_mat)
-    accent_objs.extend(marking_objs)
+        brow = _sphere(f"KindlpupBrow{'R' if sx > 0 else 'L'}",
+                       _head_tilted((sx * 0.085, -0.275, 0.825), head_tilt),
+                       0.024)
+        brow.data.materials.append(marking_mat)
+        accent_objs.append(brow)
 
-    # Dark nose on the muzzle tip
-    nose_mat = sc.make_toon_material("KindlpupNose", "#1E1418", "#120C12",
-                                     OUTLINE, GLOW, rim_strength=0.6)
+    # Black nose on the muzzle tip
     nose = _sphere("KindlpupNose",
-                   _head_tilted((0.0, -0.475, 0.565), head_tilt), 0.042,
-                   (1.0, 0.7, 0.8))
+                   _head_tilted((0.0, -0.425, 0.665), head_tilt), 0.035,
+                   (1.2, 0.7, 0.8))
     nose.data.materials.append(nose_mat)
     accent_objs.append(nose)
 
-    # ── Glow parts: big round eyes, ear embers, tail-tip ember ───────────────
     # Structured puppy eyes: dark rim -> amber iris (soft glow) -> dark pupil
-    # -> near-white catchlight (the "soul" sparkle, upper-outer on the iris)
-    catch_mat = sc.make_glow_material("KindlpupCatchlight", CATCHLIGHT, 5.0)
+    # -> near-white catchlight (upper-outer on the iris)
     glow_objs = []
     for sx in (1, -1):
         side = "R" if sx > 0 else "L"
-        pos = Vector((sx * 0.105, -0.375, 0.67))
+        # Buried in the head surface so only a lens-cap shows — embedded
+        # almond read, not googly stalks
+        pos = Vector((sx * 0.088, -0.235, 0.76))
 
-        rim = _sphere(f"KindlpupEyeRim{side}", _head_tilted(pos, head_tilt), 0.062)
+        rim = _sphere(f"KindlpupEyeRim{side}", _head_tilted(pos, head_tilt), 0.046)
         rim.data.materials.append(nose_mat)
         accent_objs.append(rim)
 
         iris = _sphere(f"KindlpupIris{side}",
-                       _head_tilted(pos + Vector((0, -0.020, 0)), head_tilt), 0.055)
+                       _head_tilted(pos + Vector((0, -0.016, 0)), head_tilt), 0.040)
         iris.data.materials.append(eye_mat)
         glow_objs.append(iris)
 
         pupil = _sphere(f"KindlpupPupil{side}",
-                        _head_tilted(pos + Vector((0, -0.062, -0.004)), head_tilt),
-                        0.019)
+                        _head_tilted(pos + Vector((0, -0.048, -0.003)), head_tilt),
+                        0.014)
         pupil.data.materials.append(nose_mat)
         accent_objs.append(pupil)
 
         catch = _sphere(
             f"KindlpupCatch{side}",
-            _head_tilted(pos + Vector((sx * -0.016, -0.055, 0.018)), head_tilt),
-            0.013)
+            _head_tilted(pos + Vector((sx * -0.011, -0.042, 0.013)), head_tilt),
+            0.008)
         catch.data.materials.append(catch_mat)
         accent_objs.append(catch)
 
-    def flame(name, x, y, z, r, depth):
-        bpy.ops.mesh.primitive_cone_add(
-            vertices=8, radius1=r, radius2=0.004, depth=depth, location=(x, y, z))
-        fl = bpy.context.active_object
-        fl.name = name
-        fl.rotation_euler = Euler((rng.uniform(-0.25, 0.25),
-                                   rng.uniform(-0.25, 0.25), 0.0))
+    # ── Flame anklets: a fire ring above each paw + small licks ──────────────
+    for i, (fx, fy) in enumerate(LEGS):
+        bpy.ops.mesh.primitive_torus_add(
+            major_radius=0.062, minor_radius=0.012, location=(fx, fy, 0.15),
+            major_segments=20, minor_segments=8)
+        ring = bpy.context.active_object
+        ring.name = f"KindlpupAnklet{i}"
         bpy.ops.object.shade_smooth()
-        fl.data.materials.append(flame_mat)
-        glow_objs.append(fl)
+        ring.data.materials.append(flame_mat)
+        glow_objs.append(ring)
 
-    # Flame wreaths around each paw (reference: paws alight)
-    paw_spots = [(0.145, -0.16), (-0.145, -0.16), (0.155, 0.24), (-0.155, 0.24)]
-    for i, (px, py) in enumerate(paw_spots):
         for j in range(2):
-            ang = j * 2.6 + i
-            fx = px + 0.09 * math.cos(ang)
-            fy = py + 0.09 * math.sin(ang)
-            flame(f"KindlpupPawFlame{i}{j}", fx, fy,
-                  0.085 + rng.uniform(0.0, 0.015), 0.020, 0.075)
+            ang = j * 2.8 + i * 1.1
+            lx = fx + 0.062 * math.cos(ang)
+            ly = fy + 0.062 * math.sin(ang)
+            bpy.ops.mesh.primitive_cone_add(
+                vertices=8, radius1=0.014, radius2=0.003, depth=0.055,
+                location=(lx, ly, 0.18 + rng.uniform(0.0, 0.012)))
+            lick = bpy.context.active_object
+            lick.name = f"KindlpupAnkletLick{i}{j}"
+            lick.rotation_euler = Euler((rng.uniform(-0.2, 0.2),
+                                         rng.uniform(-0.2, 0.2), 0.0))
+            bpy.ops.object.shade_smooth()
+            lick.data.materials.append(flame_mat)
+            glow_objs.append(lick)
 
-    # Tail tip burning (hugging the tip of the side-curled tail)
-    flame("KindlpupTailFlameA", 0.16, 0.37, 0.68, 0.038, 0.13)
-    flame("KindlpupTailFlameB", 0.12, 0.35, 0.66, 0.024, 0.08)
-    flame("KindlpupTailFlameC", 0.20, 0.39, 0.65, 0.022, 0.07)
-
-    # ── Root: parent everything; lean forward onto the front paws ────────────
+    # ── Root: neutral standing pose (matches the turnaround) ─────────────────
     root = _link(bpy.data.objects.new("KindlpupRoot", None))
     for obj in [body] + accent_objs + glow_objs:
         obj.parent = root
-    root.rotation_euler = Euler((math.radians(8), 0.0, 0.0))  # about to pounce
     bpy.context.view_layer.update()
 
     print("[kindlpup] build complete")
@@ -295,7 +336,7 @@ def build_kindlpup(seed: int = 7) -> dict:
 def parse_args() -> argparse.Namespace:
     # Blender CLI passes script args after "--"; plain python passes them directly
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
-    parser = argparse.ArgumentParser(description="Render Kindlpup (BondBound style test)")
+    parser = argparse.ArgumentParser(description="Render Kindlpup (BondBound)")
     parser.add_argument("--output", default="renders/kindlpup/", help="output directory")
     parser.add_argument("--mode", choices=["still", "idle", "back", "overworld", "all"],
                         default="still")
