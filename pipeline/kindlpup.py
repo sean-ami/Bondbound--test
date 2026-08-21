@@ -41,7 +41,7 @@ FLAME_STRENGTH = 8.0
 
 # ── Construction helpers ─────────────────────────────────────────────────────
 
-HEAD_CENTER = Vector((0.0, -0.16, 0.66))
+HEAD_CENTER = Vector((0.0, -0.14, 0.62))
 
 def _head_tilted(p: Vector, tilt: float) -> Vector:
     """Rotate a point around the head center about the Y (front) axis —
@@ -100,29 +100,29 @@ def build_kindlpup(seed: int = 7) -> dict:
         el.co = _head_tilted(co, head_tilt) if tilt_head else Vector(co)
         el.radius = r
 
-    # Round body, big head (~40% of mass), short muzzle, chest fluff mass.
+    # Reference proportions: low-slung chunky body, huge head (~50% of the
+    # standing height incl. cheek ruff), short low muzzle, stubby legs.
     # Metaball iso-surfaces sit at ~75% of element radius, so neighbouring
     # elements overlap generously to blend into one connected mass.
-    ball((0.00,  0.05, 0.36), 0.30)            # body core
-    ball((0.00,  0.18, 0.38), 0.24)            # rump
-    ball((0.00, -0.08, 0.34), 0.24)            # chest
-    ball((0.00, -0.20, 0.44), 0.14)            # chest fluff mass
-    ball((0.00, -0.12, 0.52), 0.18, True)      # neck (bridges body -> head)
-    ball((0.00, -0.16, 0.70), 0.28, True)      # head (big!)
-    ball((0.00, -0.36, 0.62), 0.12, True)      # short muzzle
-    ball((0.10, -0.28, 0.64), 0.10, True)      # cheek R
-    ball((-0.10, -0.28, 0.64), 0.10, True)     # cheek L
+    ball((0.00,  0.08, 0.28), 0.30)            # body core (low)
+    ball((0.00,  0.22, 0.30), 0.25)            # rump
+    ball((0.00, -0.08, 0.28), 0.26)            # chest
+    ball((0.00, -0.10, 0.44), 0.22, True)      # short neck (head sits ON body)
+    ball((0.00, -0.14, 0.62), 0.33, True)      # head (huge)
+    ball((0.21, -0.16, 0.56), 0.13, True)      # cheek ruff R (widens the face)
+    ball((-0.21, -0.16, 0.56), 0.13, True)     # cheek ruff L
+    ball((0.00, -0.38, 0.53), 0.115, True)     # short muzzle, low on the face
     # Stubby legs + oversized paws (cute-factor anchor)
     for sx in (1, -1):
-        ball((sx * 0.13, -0.12, 0.18), 0.095)  # front leg
-        ball((sx * 0.13, -0.15, 0.09), 0.115)  # front paw (oversized)
-        ball((sx * 0.14,  0.18, 0.18), 0.095)  # hind leg
-        ball((sx * 0.14,  0.20, 0.09), 0.105)  # hind paw
-    # Bushy tail curling upward (chained overlap so it reads as one curl)
-    ball((0.00, 0.33, 0.42), 0.115)
-    ball((0.00, 0.40, 0.52), 0.100)
-    ball((0.00, 0.43, 0.63), 0.090)
-    ball((0.00, 0.40, 0.73), 0.075)
+        ball((sx * 0.14, -0.12, 0.12), 0.090)  # front leg
+        ball((sx * 0.145, -0.16, 0.07), 0.120) # front paw (oversized)
+        ball((sx * 0.15,  0.22, 0.12), 0.090)  # hind leg
+        ball((sx * 0.155,  0.24, 0.07), 0.110) # hind paw
+    # Bushy tail curling up at the side (visible from the hero 3/4 angle)
+    ball((0.08, 0.36, 0.30), 0.120)
+    ball((0.16, 0.42, 0.40), 0.105)
+    ball((0.19, 0.42, 0.52), 0.090)
+    ball((0.16, 0.37, 0.61), 0.075)
 
     # Convert metaballs -> mesh
     bpy.ops.object.select_all(action="DESELECT")
@@ -136,23 +136,25 @@ def build_kindlpup(seed: int = 7) -> dict:
     # Asymmetric ears (reference: one upright pointed ear, one floppy)
     ear_objs = []
 
-    up_loc = _head_tilted((0.14, -0.13, 0.96), head_tilt)
+    # Upright ear on the far side, floppy ear toward the hero camera (+X),
+    # matching the reference composition
+    up_loc = _head_tilted((-0.16, -0.10, 0.90), head_tilt)
     bpy.ops.mesh.primitive_cone_add(
-        vertices=16, radius1=0.095, radius2=0.012, depth=0.32, location=up_loc)
+        vertices=16, radius1=0.115, radius2=0.014, depth=0.36, location=up_loc)
     ear_up = bpy.context.active_object
     ear_up.name = "KindlpupEarUp"
     ear_up.rotation_euler = Euler(
-        (math.radians(-8), math.radians(12) + ear_jitter + head_tilt, 0.0))
+        (math.radians(-8), math.radians(-12) - ear_jitter + head_tilt, 0.0))
     bpy.ops.object.shade_smooth()
     ear_objs.append(ear_up)
 
-    flop_loc = _head_tilted((-0.20, -0.12, 0.82), head_tilt)
+    flop_loc = _head_tilted((0.27, -0.10, 0.72), head_tilt)
     bpy.ops.mesh.primitive_cone_add(
-        vertices=16, radius1=0.085, radius2=0.015, depth=0.28, location=flop_loc)
+        vertices=16, radius1=0.100, radius2=0.018, depth=0.30, location=flop_loc)
     ear_flop = bpy.context.active_object
     ear_flop.name = "KindlpupEarFlop"
     ear_flop.rotation_euler = Euler(
-        (math.radians(10), math.radians(-105) + ear_jitter + head_tilt, 0.0))
+        (math.radians(10), math.radians(100) + ear_jitter + head_tilt, 0.0))
     bpy.ops.object.shade_smooth()
     ear_objs.append(ear_flop)
 
@@ -180,13 +182,13 @@ def build_kindlpup(seed: int = 7) -> dict:
     accent_objs = []
 
     # Inner ear on the upright ear only
-    loc = _head_tilted((0.14, -0.185, 0.945), head_tilt)
+    loc = _head_tilted((-0.16, -0.155, 0.885), head_tilt)
     bpy.ops.mesh.primitive_cone_add(
-        vertices=12, radius1=0.050, radius2=0.008, depth=0.18, location=loc)
+        vertices=12, radius1=0.060, radius2=0.010, depth=0.20, location=loc)
     inner = bpy.context.active_object
     inner.name = "KindlpupInnerEar"
     inner.rotation_euler = Euler(
-        (math.radians(-10), math.radians(12) + ear_jitter + head_tilt, 0.0))
+        (math.radians(-10), math.radians(-12) - ear_jitter + head_tilt, 0.0))
     bpy.ops.object.shade_smooth()
     inner.data.materials.append(inner_mat)
     accent_objs.append(inner)
@@ -194,26 +196,32 @@ def build_kindlpup(seed: int = 7) -> dict:
     # Grey-tan markings: chest, muzzle patch, brow dots, toe caps
     marking_objs = []
     marking_objs.append(_sphere(
-        "KindlpupChestFluff", (0.0, -0.265, 0.42), 0.105, (1.0, 0.6, 1.1)))
+        "KindlpupChestFluff", (0.0, -0.28, 0.34), 0.13, (1.1, 0.6, 1.15)))
     marking_objs.append(_sphere(
         "KindlpupMuzzlePatch",
-        _head_tilted((0.0, -0.43, 0.62), head_tilt), 0.075, (1.0, 0.45, 0.85)))
+        _head_tilted((0.0, -0.44, 0.52), head_tilt), 0.08, (1.0, 0.45, 0.85)))
     for sx in (1, -1):
         marking_objs.append(_sphere(
-            f"KindlpupBrow{'R' if sx > 0 else 'L'}",
-            _head_tilted((sx * 0.075, -0.36, 0.79), head_tilt), 0.026))
-        marking_objs.append(_sphere(
             f"KindlpupToes{'R' if sx > 0 else 'L'}",
-            (sx * 0.13, -0.25, 0.09), 0.05, (1.0, 0.55, 0.85)))
+            (sx * 0.145, -0.27, 0.07), 0.055, (1.0, 0.5, 0.8)))
     for obj in marking_objs:
         obj.data.materials.append(marking_mat)
     accent_objs.extend(marking_objs)
+
+    # Dark nose on the muzzle tip
+    nose_mat = sc.make_toon_material("KindlpupNose", "#1E1418", "#120C12",
+                                     OUTLINE, GLOW, rim_strength=0.6)
+    nose = _sphere("KindlpupNose",
+                   _head_tilted((0.0, -0.475, 0.565), head_tilt), 0.042,
+                   (1.0, 0.7, 0.8))
+    nose.data.materials.append(nose_mat)
+    accent_objs.append(nose)
 
     # ── Glow parts: big round eyes, ear embers, tail-tip ember ───────────────
     glow_objs = []
     for sx in (1, -1):
         eye = _sphere(f"KindlpupEye{'R' if sx > 0 else 'L'}",
-                      _head_tilted((sx * 0.075, -0.35, 0.72), head_tilt), 0.045)
+                      _head_tilted((sx * 0.105, -0.375, 0.67), head_tilt), 0.058)
         eye.data.materials.append(eye_mat)
         glow_objs.append(eye)
 
@@ -229,25 +237,25 @@ def build_kindlpup(seed: int = 7) -> dict:
         glow_objs.append(fl)
 
     # Flame wreaths around each paw (reference: paws alight)
-    paw_spots = [(0.13, -0.15), (-0.13, -0.15), (0.14, 0.20), (-0.14, 0.20)]
+    paw_spots = [(0.145, -0.16), (-0.145, -0.16), (0.155, 0.24), (-0.155, 0.24)]
     for i, (px, py) in enumerate(paw_spots):
-        for j in range(3):
-            ang = j * 2.1 + i
-            fx = px + 0.085 * math.cos(ang)
-            fy = py + 0.085 * math.sin(ang)
+        for j in range(2):
+            ang = j * 2.6 + i
+            fx = px + 0.09 * math.cos(ang)
+            fy = py + 0.09 * math.sin(ang)
             flame(f"KindlpupPawFlame{i}{j}", fx, fy,
-                  0.10 + rng.uniform(0.0, 0.02), 0.024, 0.10)
+                  0.085 + rng.uniform(0.0, 0.015), 0.020, 0.075)
 
-    # Tail tip burning
-    flame("KindlpupTailFlameA", 0.00, 0.41, 0.80, 0.045, 0.16)
-    flame("KindlpupTailFlameB", 0.03, 0.37, 0.78, 0.028, 0.10)
-    flame("KindlpupTailFlameC", -0.03, 0.43, 0.76, 0.025, 0.09)
+    # Tail tip burning (hugging the tip of the side-curled tail)
+    flame("KindlpupTailFlameA", 0.16, 0.37, 0.68, 0.038, 0.13)
+    flame("KindlpupTailFlameB", 0.12, 0.35, 0.66, 0.024, 0.08)
+    flame("KindlpupTailFlameC", 0.20, 0.39, 0.65, 0.022, 0.07)
 
     # ── Root: parent everything; lean forward onto the front paws ────────────
     root = _link(bpy.data.objects.new("KindlpupRoot", None))
     for obj in [body] + accent_objs + glow_objs:
         obj.parent = root
-    root.rotation_euler = Euler((math.radians(6), 0.0, 0.0))  # about to pounce
+    root.rotation_euler = Euler((math.radians(8), 0.0, 0.0))  # about to pounce
     bpy.context.view_layer.update()
 
     print("[kindlpup] build complete")
