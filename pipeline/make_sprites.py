@@ -32,16 +32,17 @@ CREATURES = {
     "kindlpup": {
         "script": "kindlpup.py",
         "palette": [
-            "#241012",  # outline
-            "#3A1A26",  # shadow band (violet-shifted)
-            "#5A2A2E",  # body lit band
-            "#7E3528",  # rim-warmed body
-            "#C22E0E",  # deep ember accent
+            "#140A0E",  # outline
+            "#1E1622",  # shadow band (near-black, violet-shifted)
+            "#3A2C2C",  # charcoal body lit band
+            "#5C4038",  # rim-warmed charcoal
+            "#96826E",  # grey-tan markings
+            "#C2542E",  # rust inner ear / deep flame
             "#FF6B1A",  # core glow
-            "#FFC24B",  # hot highlight
+            "#FFC24B",  # hot flame highlight
             "#FFEFC0",  # near-white glow core
         ],
-        "outline": "#241012",
+        "outline": "#140A0E",
     },
 }
 

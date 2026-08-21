@@ -23,17 +23,20 @@ from mathutils import Euler, Matrix, Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import style_core as sc
 
-# ── Palette (task spec — Primal/Ember family) ────────────────────────────────
+# ── Palette (Primal/Ember family, dark-first per art-direction reference:
+#    charcoal body, grey-tan markings, rust inner ear, amber eyes,
+#    flame-wreathed paws and tail) ─────────────────────────────────────────────
 
-BODY_LIT     = "#5A2A2E"
-BODY_SHADOW  = "#3A1A26"   # violet-shifted body (mix with #1A1430)
-ACCENT_LIT   = "#C22E0E"   # inner ears / paw pads / chest fluff
-OUTLINE      = "#241012"
+BODY_LIT     = "#3A2C2C"   # charcoal with a warm tint
+BODY_SHADOW  = "#1E1622"   # near-black, violet-shifted
+MARKING_LIT  = "#96826E"   # grey-tan muzzle / brows / chest / toes
+INNER_EAR    = "#C2542E"   # rust inner ear
+OUTLINE      = "#140A0E"
 GLOW         = "#FF6B1A"   # rim light + rim emission
-EYE_COLOR    = "#FFC24B"
+EYE_COLOR    = "#FFA226"   # amber
 EYE_STRENGTH = 6.0
-EMBER_COLOR  = "#FFC24B"
-EMBER_STRENGTH = 8.0
+FLAME_COLOR  = "#FFC24B"
+FLAME_STRENGTH = 8.0
 
 
 # ── Construction helpers ─────────────────────────────────────────────────────
@@ -74,11 +77,14 @@ def build_kindlpup(seed: int = 7) -> dict:
 
     # Materials
     body_mat = sc.make_toon_material("KindlpupBody", BODY_LIT, BODY_SHADOW, OUTLINE, GLOW)
-    accent_mat = sc.make_toon_material(
-        "KindlpupAccent", ACCENT_LIT,
-        sc.violet_shift(sc.hex_to_rgba(ACCENT_LIT)), OUTLINE, GLOW)
+    marking_mat = sc.make_toon_material(
+        "KindlpupMarking", MARKING_LIT,
+        sc.violet_shift(sc.hex_to_rgba(MARKING_LIT)), OUTLINE, GLOW)
+    inner_mat = sc.make_toon_material(
+        "KindlpupInnerEar", INNER_EAR,
+        sc.violet_shift(sc.hex_to_rgba(INNER_EAR)), OUTLINE, GLOW)
     eye_mat = sc.make_glow_material("KindlpupEyes", EYE_COLOR, EYE_STRENGTH)
-    ember_mat = sc.make_glow_material("KindlpupEmber", EMBER_COLOR, EMBER_STRENGTH)
+    flame_mat = sc.make_glow_material("KindlpupFlame", FLAME_COLOR, FLAME_STRENGTH)
 
     # ── Body mass: metaballs for organic blob-blending (front = -Y) ──────────
     mb_data = bpy.data.metaballs.new("KindlpupMB")
@@ -123,17 +129,28 @@ def build_kindlpup(seed: int = 7) -> dict:
     body.name = "KindlpupBodyMesh"
 
     # ── Ears: large pointed cones, slightly too big for the head ─────────────
+    # Asymmetric ears (reference: one upright pointed ear, one floppy)
     ear_objs = []
-    for sx in (1, -1):
-        loc = _head_tilted((sx * 0.14, -0.13, 0.96), head_tilt)
-        bpy.ops.mesh.primitive_cone_add(
-            vertices=16, radius1=0.095, radius2=0.012, depth=0.32, location=loc)
-        ear = bpy.context.active_object
-        ear.name = f"KindlpupEar{'R' if sx > 0 else 'L'}"
-        ear.rotation_euler = Euler(
-            (math.radians(-8), sx * (math.radians(12) + ear_jitter) + head_tilt, 0.0))
-        bpy.ops.object.shade_smooth()
-        ear_objs.append(ear)
+
+    up_loc = _head_tilted((0.14, -0.13, 0.96), head_tilt)
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=16, radius1=0.095, radius2=0.012, depth=0.32, location=up_loc)
+    ear_up = bpy.context.active_object
+    ear_up.name = "KindlpupEarUp"
+    ear_up.rotation_euler = Euler(
+        (math.radians(-8), math.radians(12) + ear_jitter + head_tilt, 0.0))
+    bpy.ops.object.shade_smooth()
+    ear_objs.append(ear_up)
+
+    flop_loc = _head_tilted((-0.20, -0.12, 0.82), head_tilt)
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=16, radius1=0.085, radius2=0.015, depth=0.28, location=flop_loc)
+    ear_flop = bpy.context.active_object
+    ear_flop.name = "KindlpupEarFlop"
+    ear_flop.rotation_euler = Euler(
+        (math.radians(10), math.radians(-105) + ear_jitter + head_tilt, 0.0))
+    bpy.ops.object.shade_smooth()
+    ear_objs.append(ear_flop)
 
     # Join ears into the body so one outline shell covers the silhouette
     bpy.ops.object.select_all(action="DESELECT")
@@ -155,30 +172,38 @@ def build_kindlpup(seed: int = 7) -> dict:
     body.data.materials.append(body_mat)
     sc.add_outline(body, OUTLINE, thickness_pct=0.02)
 
-    # ── Accent overlays (#C22E0E): inner ears, chest fluff, paw pads ─────────
+    # ── Overlays: rust inner ear + grey-tan markings ─────────────────────────
     accent_objs = []
 
+    # Inner ear on the upright ear only
+    loc = _head_tilted((0.14, -0.185, 0.945), head_tilt)
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=12, radius1=0.050, radius2=0.008, depth=0.18, location=loc)
+    inner = bpy.context.active_object
+    inner.name = "KindlpupInnerEar"
+    inner.rotation_euler = Euler(
+        (math.radians(-10), math.radians(12) + ear_jitter + head_tilt, 0.0))
+    bpy.ops.object.shade_smooth()
+    inner.data.materials.append(inner_mat)
+    accent_objs.append(inner)
+
+    # Grey-tan markings: chest, muzzle patch, brow dots, toe caps
+    marking_objs = []
+    marking_objs.append(_sphere(
+        "KindlpupChestFluff", (0.0, -0.265, 0.42), 0.105, (1.0, 0.6, 1.1)))
+    marking_objs.append(_sphere(
+        "KindlpupMuzzlePatch",
+        _head_tilted((0.0, -0.43, 0.62), head_tilt), 0.075, (1.0, 0.45, 0.85)))
     for sx in (1, -1):
-        loc = _head_tilted((sx * 0.14, -0.185, 0.945), head_tilt)
-        bpy.ops.mesh.primitive_cone_add(
-            vertices=12, radius1=0.050, radius2=0.008, depth=0.18, location=loc)
-        inner = bpy.context.active_object
-        inner.name = f"KindlpupInnerEar{'R' if sx > 0 else 'L'}"
-        inner.rotation_euler = Euler(
-            (math.radians(-10), sx * (math.radians(12) + ear_jitter) + head_tilt, 0.0))
-        bpy.ops.object.shade_smooth()
-        accent_objs.append(inner)
-
-    fluff = _sphere("KindlpupChestFluff", (0.0, -0.265, 0.42), 0.105, (1.0, 0.6, 1.1))
-    accent_objs.append(fluff)
-
-    for sx in (1, -1):
-        pad = _sphere(f"KindlpupPawPad{'R' if sx > 0 else 'L'}",
-                      (sx * 0.13, -0.25, 0.09), 0.05, (1.0, 0.55, 0.85))
-        accent_objs.append(pad)
-
-    for obj in accent_objs:
-        obj.data.materials.append(accent_mat)
+        marking_objs.append(_sphere(
+            f"KindlpupBrow{'R' if sx > 0 else 'L'}",
+            _head_tilted((sx * 0.075, -0.36, 0.79), head_tilt), 0.026))
+        marking_objs.append(_sphere(
+            f"KindlpupToes{'R' if sx > 0 else 'L'}",
+            (sx * 0.13, -0.25, 0.09), 0.05, (1.0, 0.55, 0.85)))
+    for obj in marking_objs:
+        obj.data.materials.append(marking_mat)
+    accent_objs.extend(marking_objs)
 
     # ── Glow parts: big round eyes, ear embers, tail-tip ember ───────────────
     glow_objs = []
@@ -188,17 +213,31 @@ def build_kindlpup(seed: int = 7) -> dict:
         eye.data.materials.append(eye_mat)
         glow_objs.append(eye)
 
-    # Single floating ember just above each ear tip (~4% of body height)
-    for sx in (1, -1):
-        ember = _sphere(f"KindlpupEmber{'R' if sx > 0 else 'L'}",
-                        _head_tilted((sx * 0.16, -0.10, 1.16), head_tilt), 0.020)
-        ember.data.materials.append(ember_mat)
-        glow_objs.append(ember)
+    def flame(name, x, y, z, r, depth):
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=8, radius1=r, radius2=0.004, depth=depth, location=(x, y, z))
+        fl = bpy.context.active_object
+        fl.name = name
+        fl.rotation_euler = Euler((rng.uniform(-0.25, 0.25),
+                                   rng.uniform(-0.25, 0.25), 0.0))
+        bpy.ops.object.shade_smooth()
+        fl.data.materials.append(flame_mat)
+        glow_objs.append(fl)
 
-    # Tail-tip ember (acceptance checklist calls out a glowing tail ember)
-    tail_ember = _sphere("KindlpupTailEmber", (0.0, 0.40, 0.82), 0.026)
-    tail_ember.data.materials.append(ember_mat)
-    glow_objs.append(tail_ember)
+    # Flame wreaths around each paw (reference: paws alight)
+    paw_spots = [(0.13, -0.15), (-0.13, -0.15), (0.14, 0.20), (-0.14, 0.20)]
+    for i, (px, py) in enumerate(paw_spots):
+        for j in range(3):
+            ang = j * 2.1 + i
+            fx = px + 0.085 * math.cos(ang)
+            fy = py + 0.085 * math.sin(ang)
+            flame(f"KindlpupPawFlame{i}{j}", fx, fy,
+                  0.10 + rng.uniform(0.0, 0.02), 0.024, 0.10)
+
+    # Tail tip burning
+    flame("KindlpupTailFlameA", 0.00, 0.41, 0.80, 0.045, 0.16)
+    flame("KindlpupTailFlameB", 0.03, 0.37, 0.78, 0.028, 0.10)
+    flame("KindlpupTailFlameC", -0.03, 0.43, 0.76, 0.025, 0.09)
 
     # ── Root: parent everything; lean forward onto the front paws ────────────
     root = _link(bpy.data.objects.new("KindlpupRoot", None))
@@ -211,7 +250,7 @@ def build_kindlpup(seed: int = 7) -> dict:
     return {
         "root": root,
         "body": body,
-        "glow_materials": [eye_mat, ember_mat],
+        "glow_materials": [eye_mat, flame_mat],
     }
 
 
