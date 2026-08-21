@@ -33,8 +33,9 @@ MARKING_LIT  = "#96826E"   # grey-tan muzzle / brows / chest / toes
 INNER_EAR    = "#C2542E"   # rust inner ear
 OUTLINE      = "#140A0E"
 GLOW         = "#FF6B1A"   # rim light + rim emission
-EYE_COLOR    = "#FFA226"   # amber
-EYE_STRENGTH = 6.0
+EYE_COLOR    = "#FFA226"   # amber iris
+EYE_STRENGTH = 3.0         # soft glow, not a lamp — structure carries the eye
+CATCHLIGHT   = "#FFEFC0"   # near-white sparkle
 FLAME_COLOR  = "#FFC24B"
 FLAME_STRENGTH = 8.0
 
@@ -218,12 +219,35 @@ def build_kindlpup(seed: int = 7) -> dict:
     accent_objs.append(nose)
 
     # ── Glow parts: big round eyes, ear embers, tail-tip ember ───────────────
+    # Structured puppy eyes: dark rim -> amber iris (soft glow) -> dark pupil
+    # -> near-white catchlight (the "soul" sparkle, upper-outer on the iris)
+    catch_mat = sc.make_glow_material("KindlpupCatchlight", CATCHLIGHT, 5.0)
     glow_objs = []
     for sx in (1, -1):
-        eye = _sphere(f"KindlpupEye{'R' if sx > 0 else 'L'}",
-                      _head_tilted((sx * 0.105, -0.375, 0.67), head_tilt), 0.058)
-        eye.data.materials.append(eye_mat)
-        glow_objs.append(eye)
+        side = "R" if sx > 0 else "L"
+        pos = Vector((sx * 0.105, -0.375, 0.67))
+
+        rim = _sphere(f"KindlpupEyeRim{side}", _head_tilted(pos, head_tilt), 0.062)
+        rim.data.materials.append(nose_mat)
+        accent_objs.append(rim)
+
+        iris = _sphere(f"KindlpupIris{side}",
+                       _head_tilted(pos + Vector((0, -0.020, 0)), head_tilt), 0.055)
+        iris.data.materials.append(eye_mat)
+        glow_objs.append(iris)
+
+        pupil = _sphere(f"KindlpupPupil{side}",
+                        _head_tilted(pos + Vector((0, -0.062, -0.004)), head_tilt),
+                        0.019)
+        pupil.data.materials.append(nose_mat)
+        accent_objs.append(pupil)
+
+        catch = _sphere(
+            f"KindlpupCatch{side}",
+            _head_tilted(pos + Vector((sx * -0.016, -0.055, 0.018)), head_tilt),
+            0.013)
+        catch.data.materials.append(catch_mat)
+        accent_objs.append(catch)
 
     def flame(name, x, y, z, r, depth):
         bpy.ops.mesh.primitive_cone_add(
