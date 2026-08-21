@@ -222,7 +222,8 @@ def parse_args() -> argparse.Namespace:
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     parser = argparse.ArgumentParser(description="Render Kindlpup (BondBound style test)")
     parser.add_argument("--output", default="renders/kindlpup/", help="output directory")
-    parser.add_argument("--mode", choices=["still", "idle"], default="still")
+    parser.add_argument("--mode", choices=["still", "idle", "back", "overworld", "all"],
+                        default="still")
     parser.add_argument("--resolution", type=int, default=512)
     parser.add_argument("--seed", type=int, default=7,
                         help="drives small variation in ear/head tilt")
@@ -239,21 +240,63 @@ def main() -> None:
 
     sc.reset_scene()
     parts = build_kindlpup(seed=args.seed)
+    root = parts["root"]
 
     sc.setup_lighting(GLOW)
-    sc.setup_camera(parts["root"], mode="hero")
     sc.setup_render(os.path.join(out_dir, "kindlpup_s0_still.png"),
                     resolution=args.resolution)
 
-    if args.mode == "still":
-        path = sc.render_still(os.path.join(out_dir, "kindlpup_s0_still.png"))
-        print(f"[kindlpup] DONE — 1 file:\n  {path}")
-    else:
-        sc.animate_idle(parts["root"], parts["glow_materials"], frames=8)
-        paths = sc.render_frames(out_dir, "kindlpup_s0_idle_{frame:02d}.png", frames=8)
-        print(f"[kindlpup] DONE — {len(paths)} files:")
-        for p in paths:
-            print(f"  {p}")
+    outputs = []
+    mode = args.mode
+
+    # Battle front (3/4-front hero shot)
+    if mode in ("still", "all"):
+        sc.setup_camera(root, mode="hero")
+        outputs.append(sc.render_still(os.path.join(out_dir, "kindlpup_s0_still.png")))
+
+    # Battle back (3/4 from behind, as seen over the player's shoulder)
+    if mode in ("back", "all"):
+        sc.setup_camera(root, mode="hero", azimuth_deg=215.0)
+        outputs.append(sc.render_still(os.path.join(out_dir, "kindlpup_s0_back.png")))
+
+    # Overworld: 4 directions x 3 hop frames from a top-down-ish angle
+    if mode in ("overworld", "all"):
+        directions = {"down": 0.0, "left": -90.0, "right": 90.0, "up": 180.0}
+        height = sc.bbox_height(root)
+        base_z = root.location.z
+        base_yaw = root.rotation_euler.z
+
+        # One shared ortho scale so every direction renders at the same size
+        shared_scale = 0.0
+        for az in directions.values():
+            cam = sc.setup_camera(root, azimuth_deg=az, elevation_deg=25.0)
+            shared_scale = max(shared_scale, cam.data.ortho_scale)
+
+        for dname, az in directions.items():
+            cam = sc.setup_camera(root, azimuth_deg=az, elevation_deg=25.0)
+            cam.data.ortho_scale = shared_scale
+            for f in range(3):
+                # Classic 3-frame walk: neutral / hop-left / hop-right
+                root.location.z = base_z + (0.02 * height if f > 0 else 0.0)
+                root.rotation_euler.z = base_yaw + math.radians(
+                    0.0 if f == 0 else (4.0 if f == 1 else -4.0))
+                bpy.context.view_layer.update()
+                outputs.append(sc.render_still(os.path.join(
+                    out_dir, f"kindlpup_s0_ow{dname}_{f:02d}.png")))
+
+        root.location.z = base_z
+        root.rotation_euler.z = base_yaw
+
+    # Idle loop last (it keyframes the root, so stills must come first)
+    if mode in ("idle", "all"):
+        sc.setup_camera(root, mode="hero")
+        sc.animate_idle(root, parts["glow_materials"], frames=8)
+        outputs.extend(sc.render_frames(
+            out_dir, "kindlpup_s0_idle_{frame:02d}.png", frames=8))
+
+    print(f"[kindlpup] DONE — {len(outputs)} files:")
+    for p in outputs:
+        print(f"  {p}")
 
 
 if __name__ == "__main__":

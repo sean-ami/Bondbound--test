@@ -258,10 +258,27 @@ def _world_bbox(root: bpy.types.Object):
     return lo, hi
 
 
-def setup_camera(target: bpy.types.Object, mode: str = "hero") -> bpy.types.Object:
-    """Orthographic, 3/4 front, slight low angle for 'hero'. Frames the
-    subject (target + children) with ~10% padding."""
+def bbox_height(obj: bpy.types.Object) -> float:
+    """World-space height of an object + descendants (for animation amplitudes)."""
+    lo, hi = _world_bbox(obj)
+    return hi.z - lo.z
+
+
+def setup_camera(target: bpy.types.Object, mode: str = "hero",
+                 azimuth_deg: float = None,
+                 elevation_deg: float = None) -> bpy.types.Object:
+    """Orthographic camera framing the subject (target + children) with ~10%
+    padding. Default is the 3/4-front hero shot (az 35°, el −8°); pass
+    azimuth_deg / elevation_deg to override for back views, overworld
+    top-down angles, etc. Safe to call repeatedly — replaces its own camera."""
     scene = bpy.context.scene
+
+    # Replace any camera from a previous call
+    for name in ("StyleCamera", "StyleCameraTarget"):
+        old = bpy.data.objects.get(name)
+        if old:
+            bpy.data.objects.remove(old, do_unlink=True)
+
     lo, hi = _world_bbox(target)
     center = (lo + hi) / 2.0
 
@@ -272,8 +289,9 @@ def setup_camera(target: bpy.types.Object, mode: str = "hero") -> bpy.types.Obje
     scene.camera = cam
 
     # 3/4 front (front = -Y), slight low angle for hero shots
-    azimuth = math.radians(35.0)
-    elevation = math.radians(-8.0 if mode == "hero" else 14.0)
+    azimuth = math.radians(35.0 if azimuth_deg is None else azimuth_deg)
+    default_el = -8.0 if mode == "hero" else 14.0
+    elevation = math.radians(default_el if elevation_deg is None else elevation_deg)
     dist = 8.0
     direction = Vector((
         math.sin(azimuth) * math.cos(elevation),
