@@ -58,7 +58,7 @@ def reset_scene() -> None:
 # ── Toon material factory (style bible §3.1, §3.3) ───────────────────────────
 
 def make_toon_material(name: str, body_color, shadow_color, outline_color,
-                       glow_color) -> bpy.types.Material:
+                       glow_color, rim_strength: float = 2.0) -> bpy.types.Material:
     """2 hard cel bands via Shader-to-RGB -> ColorRamp (constant), plus a
     Fresnel-driven rim emission in the archetype glow color.
 
@@ -117,7 +117,7 @@ def make_toon_material(name: str, body_color, shadow_color, outline_color,
     rim_mul = nt.nodes.new("ShaderNodeMath")
     rim_mul.location = (0, -220)
     rim_mul.operation = "MULTIPLY"
-    rim_mul.inputs[1].default_value = 2.0         # rim strength ~2.0
+    rim_mul.inputs[1].default_value = rim_strength  # default ~2.0 per style bible
 
     rim_emit = nt.nodes.new("ShaderNodeEmission")
     rim_emit.name = "RimEmission"

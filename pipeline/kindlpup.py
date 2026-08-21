@@ -76,10 +76,14 @@ def build_kindlpup(seed: int = 7) -> dict:
     scene = bpy.context.scene
 
     # Materials
-    body_mat = sc.make_toon_material("KindlpupBody", BODY_LIT, BODY_SHADOW, OUTLINE, GLOW)
+    # Low rim strength keeps the charcoal body near-black (fire lives at the
+    # paws/tail/eyes, not across the coat — per the art-direction reference)
+    body_mat = sc.make_toon_material("KindlpupBody", BODY_LIT, BODY_SHADOW,
+                                     OUTLINE, GLOW, rim_strength=0.8)
     marking_mat = sc.make_toon_material(
         "KindlpupMarking", MARKING_LIT,
-        sc.violet_shift(sc.hex_to_rgba(MARKING_LIT)), OUTLINE, GLOW)
+        sc.violet_shift(sc.hex_to_rgba(MARKING_LIT)), OUTLINE, GLOW,
+        rim_strength=0.8)
     inner_mat = sc.make_toon_material(
         "KindlpupInnerEar", INNER_EAR,
         sc.violet_shift(sc.hex_to_rgba(INNER_EAR)), OUTLINE, GLOW)
